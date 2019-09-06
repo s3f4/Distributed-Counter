@@ -47,5 +47,6 @@ func main() {
 	for {
 
 	}
+
 	fmt.Println("I'm dead")
 }

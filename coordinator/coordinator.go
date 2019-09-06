@@ -20,7 +20,7 @@ type Item struct {
 
 //ServiceLookup keeps services port and tenants IDs
 type ServiceLookup struct {
-	ID      string
+	ID      string // this is may be process id and this is a server
 	Port    int
 	Tenants []string
 }
@@ -65,10 +65,11 @@ func main() {
 		fmt.Println(err)
 	}
 
+	// fmt.Print(strconv.Itoa(freeport))
 	cmd := exec.Command("./service/service", "--port", strconv.Itoa(freeport))
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err = cmd.Run()
+	err = cmd.Start()
 	if err != nil {
 		fmt.Println(err)
 	}
