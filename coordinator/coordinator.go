@@ -29,6 +29,7 @@ func main() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/items/{TenantID}/count", handler.Count).Methods("GET")
 	myRouter.HandleFunc("/items", handler.Insert).Methods("POST")
+	myRouter.HandleFunc("/nodes", handler.GetNodes).Methods("GET")
 	err := http.ListenAndServe(":3001", myRouter)
 	if err != nil {
 		fmt.Print(err)

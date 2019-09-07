@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 var p *processor.Processor
@@ -17,17 +19,29 @@ func SetProcessor(processor *processor.Processor) {
 	p = processor
 }
 
+//GetNodes returns nodes to show front end
+func GetNodes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"nodes":   p.Nodes,
+	})
+}
+
 //Count returns merged count datas
 func Count(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	serverAddress := fmt.Sprintf("http://127.0.0.1:%v/items/x/count", p.Nodes[p.NodeIndex].Port)
+	params := mux.Vars(r)
+	tenantID := params["TenantID"]
+	serverAddress := fmt.Sprintf("http://127.0.0.1:%s/items/%s/count", p.Nodes[p.NodeIndex].Port, tenantID)
 	resp, err := http.Get(serverAddress)
 
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	var items interface{}
-	fmt.Println(resp.Body)
 	err = json.NewDecoder(resp.Body).Decode(&items)
-	fmt.Println(items)
 
 	if err != nil {
 		fmt.Println(err)
@@ -65,11 +79,11 @@ func Insert(w http.ResponseWriter, r *http.Request) {
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	var x interface{}
-	err = json.Unmarshal(body, &x)
+	var result interface{}
+	err = json.Unmarshal(body, &result)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	json.NewEncoder(w).Encode(x)
+	json.NewEncoder(w).Encode(result)
 }
