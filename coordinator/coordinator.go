@@ -2,29 +2,35 @@ package main
 
 import (
 	"coordinator/handler"
-	"coordinator/model"
+	"coordinator/node"
+	"coordinator/processor"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 )
 
-//Item is tenant's item
-
-var items = []model.Item{
-	model.Item{ID: "test", TenantID: "sefa sahin"},
-	model.Item{ID: "test2", TenantID: "sefa sahin2"},
-}
-
 func main() {
 
-	servers, _ := model.InitServers(3)
-	time.Sleep(5 * time.Second)
-	model.KillServers(0, servers)
+	nodes, _ := node.InitNodes(2)
+	processor := processor.Processor{
+		Nodes:     nodes,
+		NodeCount: 2,
+	}
+
+	//Latency  waiting to up nodes
+	time.Sleep(time.Second * 2)
+
+	handler.SetProcessor(&processor)
+
+	// time.Sleep(5 * time.Second)
+	// node.KillNodes(0, nodes)
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/items/{TenantID}/count", handler.Count).Methods("GET")
 	myRouter.HandleFunc("/items", handler.Insert).Methods("POST")
-	// err := http.ListenAndServe(":3001", myRouter)
-	// if err != nil {
-	// 	fmt.Print(err)
-	// }
+	err := http.ListenAndServe(":3001", myRouter)
+	if err != nil {
+		fmt.Print(err)
+	}
 }

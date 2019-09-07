@@ -13,13 +13,13 @@ import (
 
 //Item is tenant's item
 type Item struct {
-	Id     string
-	Tenant string
+	ItemID   string
+	TenantID string
 }
 
 var items = []Item{
-	Item{Id: "test", Tenant: "sefa sahin"},
-	Item{Id: "test2", Tenant: "sefa sahin2"},
+	Item{ItemID: "test", TenantID: "sefa sahin"},
+	Item{ItemID: "test2", TenantID: "sefa sahin2"},
 }
 
 func count(w http.ResponseWriter, r *http.Request) {
@@ -33,17 +33,20 @@ func count(w http.ResponseWriter, r *http.Request) {
 
 func insert(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	json.NewEncoder(w).Encode(items)
+	var item Item
+	err := json.NewDecoder(r.Body).Decode(&item)
+	if err != nil {
+		fmt.Println(err)
+	}
+	json.NewEncoder(w).Encode(item)
 }
 
 func main() {
-	defer fmt.Println("testsegfsfgsd")
 	go Down()
 
 	myRouter := mux.NewRouter().StrictSlash(true)
+	myRouter.HandleFunc("/items", insert).Methods("POST", "GET")
 	myRouter.HandleFunc("/items/{TenantID}/count", count).Methods("GET")
-	myRouter.HandleFunc("/items", insert).Methods("POST")
 
 	port := flag.String("port", "3000", " default port is 3000")
 	flag.Parse()

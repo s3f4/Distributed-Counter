@@ -1,16 +1,22 @@
 package processor
 
+import (
+	"coordinator/model"
+)
+
 type Processor struct {
-	ServerIndex int
-	ServerCount int
+	NodeIndex int
+	NodeCount int
+	Nodes     []*model.Node
+	Lookup    map[string]map[int][]int // for example TenantMap[tenantID][firstItemID,lastItemID,2nd partition firstItemId,lastItemId ....]
 }
 
 func (p *Processor) Move() *Processor {
-	p.ServerIndex = (p.ServerIndex + 1) % p.ServerCount
+	p.NodeIndex = (p.NodeIndex + 1) % p.NodeCount
 	return p
 }
 
-func (p *Processor) InsertRoute() *Processor {
+func (p *Processor) InsertRoute(item model.Item) *Processor {
 	p.Move()
 	return p
 }
