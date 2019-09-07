@@ -17,24 +17,27 @@ type Item struct {
 	TenantID string
 }
 
-var items = []Item{
-	Item{ItemID: "test", TenantID: "sefa sahin"},
-	Item{ItemID: "test2", TenantID: "sefa sahin2"},
+//Storage holds datas
+type Storage struct {
+	items []Item
+}
+
+var storage = Storage{
+	items: make([]Item, 0),
 }
 
 func count(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-	fmt.Println(params["TenantID"])
-	_, source := http.Get("https://tutorialedge.net/golang/creating-restful-api-with-golang/")
-	fmt.Println(source)
-	json.NewEncoder(w).Encode(items)
+	fmt.Println("count:")
+	fmt.Println(storage.items)
+	json.NewEncoder(w).Encode(storage.items)
 }
 
 func insert(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var item Item
 	err := json.NewDecoder(r.Body).Decode(&item)
+	storage.items = append(storage.items, item)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -42,6 +45,7 @@ func insert(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
 	go Down()
 
 	myRouter := mux.NewRouter().StrictSlash(true)
