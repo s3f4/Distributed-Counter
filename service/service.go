@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 
 	"github.com/gorilla/mux"
 )
@@ -36,17 +38,24 @@ func insert(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	defer fmt.Println("testsegfsfgsd")
+	go Down()
+
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/items/{TenantID}/count", count).Methods("GET")
 	myRouter.HandleFunc("/items", insert).Methods("POST")
 
 	port := flag.String("port", "3000", " default port is 3000")
 	flag.Parse()
-	fmt.Printf("Port: %v", *port)
-	// http.ListenAndServe(":"+*port, myRouter)
-	for {
 
-	}
+	http.ListenAndServe(":"+*port, myRouter)
+}
 
-	fmt.Println("I'm dead")
+//Down downs service when kill SIGINT came.
+func Down() {
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	<-sigint
+	fmt.Println("i am dead")
+	os.Exit(0)
 }
