@@ -25,7 +25,7 @@ const App: React.FC = () => {
       if (data.error) {
         setError(data.error.message);
       } else {
-        setNodesData(data);
+        nodesRequest();
       }
     });
   }
@@ -58,7 +58,7 @@ const App: React.FC = () => {
               <TenantForm reRender={nodesRequest} />
             </div>
             <div className="col-sm">
-              <NodeForm upNodes={up} />
+              <NodeForm reRender={nodesRequest} upNodes={up} />
             </div>
           </div>
           <NodeList nodes={nodesData.nodes} />

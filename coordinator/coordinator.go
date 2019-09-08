@@ -33,6 +33,7 @@ func main() {
 	myRouter.HandleFunc("/items", handler.Insert).Methods("POST")
 	myRouter.HandleFunc("/nodes", handler.GetNodes).Methods("GET")
 	myRouter.HandleFunc("/upNodes/{NodeCount}", handler.UpNodes).Methods("GET")
+	myRouter.HandleFunc("/shutdown/{ProcessID}", handler.Shutdown).Methods("GET")
 	err := http.ListenAndServe(":3001", myRouter)
 	if err != nil {
 		fmt.Print(err)

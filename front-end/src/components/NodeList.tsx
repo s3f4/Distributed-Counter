@@ -16,8 +16,8 @@ const NodeList = (props: Props) => {
 
     return <div className="d-flex justify-content-center">
         {
-            props.nodes && props.nodes.map((node: Node) => {
-                return <NodeCard node={node} />
+            props.nodes && props.nodes.map((node: Node, index: number) => {
+                return <NodeCard key={index} node={node} />
             })
         }
 

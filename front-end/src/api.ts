@@ -58,12 +58,30 @@ export const upNodes = (nodeCount: number) => {
         });
 }
 
-export const getCount = () => {
-    return fetch(`http://127.0.0.1:3001/count`, {
+export const shutdownNode = (pID: number) => {
+    return fetch(`http://127.0.0.1:3001/shutdown/${pID}`, {
+        method: "GET",
+    })
+        .then(response => {
+            return response.json();
+        })
+        .catch(err => {
+            return {
+                error: err
+            };
+        });
+}
+
+export const getCount = (tenantID: number) => {
+    return fetch(`http://127.0.0.1:3001/items/${tenantID}/count`, {
         method: "GET"
     })
         .then(response => {
             return response.json();
         })
-        .catch(error => console.log(error));
+        .catch(err => {
+            return {
+                error: err
+            };
+        });
 }

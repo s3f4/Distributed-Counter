@@ -63,12 +63,33 @@ func GetNodes(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+//Shutdown shutdowns node by given processID
+func Shutdown(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	ProcessID, _ := strconv.Atoi(params["ProcessID"])
+	node.KillNodes(ProcessID, nil)
+	for i, node := range p.Nodes {
+		if node.ProcessID == ProcessID {
+			fmt.Println(node)
+			copy(p.Nodes[i:], p.Nodes[i+1:])
+			p.Nodes[len(p.Nodes)-1] = nil
+			p.Nodes = p.Nodes[:len(p.Nodes)-1]
+			p.NodeCount--
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
+}
+
 //Count returns merged count datas
 func Count(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	tenantID := params["TenantID"]
-	serverAddress := fmt.Sprintf("http://127.0.0.1:%s/items/%s/count", p.Nodes[p.NodeIndex].Port, tenantID)
+	serverAddress := fmt.Sprintf("http://127.0.0.1:%v/items/%s/count", p.Nodes[p.NodeIndex].Port, tenantID)
 	resp, err := http.Get(serverAddress)
 
 	if err != nil {

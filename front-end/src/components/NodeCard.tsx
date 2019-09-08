@@ -1,6 +1,5 @@
 import React from 'react'
 import { getNodeDB } from '../api';
-import { Node } from "./NodeList";
 
 interface Item {
     TenantID: string;
@@ -27,22 +26,19 @@ const NodeCard = (props: any) => {
         });
     }, [node])
 
-    const listDB = () => {
-
-    }
 
     return (
         <div className="p-2 card mt-5 mr-2" style={{ width: "18rem" }}>
             <div className="card-body">
                 <h5 className="card-title">pID: {node.ProcessID} - Port: {node.Port}</h5>
-                <p className="card-text">
+                <div className="card-text">
                     {error}
                     {
-                        db && db.items && db.items.map((item: Item) => {
-                            return <div style={{ backgroundColor: colors[parseInt(item.TenantID) - 1], borderBottom: "1px solid black", padding: "2px 5px 2px 10px" }}>{item.TenantID} - {item.ItemID}</div>
+                        db && db.items && db.items.map((item: Item, index: number) => {
+                            return <div key={index} style={{ backgroundColor: colors[parseInt(item.TenantID) - 1], borderBottom: "1px solid black", padding: "2px 5px 2px 10px" }}>{item.TenantID} - {item.ItemID}</div>
                         })
                     }
-                </p>
+                </div>
             </div>
         </div>
     );
