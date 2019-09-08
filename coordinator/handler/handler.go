@@ -3,11 +3,13 @@ package handler
 import (
 	"bytes"
 	"coordinator/model"
+	"coordinator/node"
 	"coordinator/processor"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -17,6 +19,31 @@ var p *processor.Processor
 //SetProcessor usign processor once.
 func SetProcessor(processor *processor.Processor) {
 	p = processor
+}
+
+//UpNodes runs nodes from front-end
+func UpNodes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if p != nil && len(p.Nodes) > 0 {
+		node.KillNodes(0, p.Nodes)
+	}
+
+	params := mux.Vars(r)
+	NodeCount := params["NodeCount"]
+	nc, _ := strconv.Atoi(NodeCount)
+	nodes, _ := node.InitNodes(nc)
+	processor := processor.Processor{
+		Nodes:     nodes,
+		NodeCount: nc,
+	}
+
+	SetProcessor(&processor)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"nodes":   p.Nodes,
+	})
 }
 
 //GetNodes returns nodes to show front end

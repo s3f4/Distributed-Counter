@@ -55,7 +55,6 @@ func InitNodes(serverCount int) ([]*model.Node, error) {
 		servers[i] = &model.Node{
 			ProcessID: ProcessID,
 			Port:      Port,
-			DataCount: 0,
 		}
 	}
 	return servers, nil
