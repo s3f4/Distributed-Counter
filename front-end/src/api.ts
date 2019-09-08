@@ -1,4 +1,4 @@
-const URL = 'http://157.245.71.24';
+const URL = 'http://127.0.0.1';
 export const insertItem = (item: any) => {
     return fetch(`${URL}:3001/items`, {
         method: "POST",

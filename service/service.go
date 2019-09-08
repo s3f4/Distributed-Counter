@@ -45,18 +45,21 @@ func GetDatabase(w http.ResponseWriter, r *http.Request) {
 func Count(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-	tenantID := params["TenantID"]
-	count := 0
+	// tenantID := params["TenantID"]
+	PartitionStartIndex, _ := strconv.Atoi(params["PartitionStartIndex"])
+	PartitionEndIndex, _ := strconv.Atoi(params["PartitionEndIndex"])
 
-	for i := range database.items {
-		if database.items[i].TenantID == tenantID {
-			count++
-		}
-	}
+	// count := 0
+
+	// for i := range database.items {
+	// 	if database.items[i].TenantID == tenantID {
+	// 		count++
+	// 	}
+	// }
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"count":   count,
+		"count":   len(database.items[PartitionStartIndex : PartitionEndIndex+1]),
 	})
 }
 
@@ -92,7 +95,7 @@ func main() {
 	myRouter.Use(cors)
 
 	myRouter.HandleFunc("/items", Insert).Methods("POST", "GET")
-	myRouter.HandleFunc("/items/{TenantID}/count", Count).Methods("GET")
+	myRouter.HandleFunc("/items/{PartitionStartIndex}/{PartitionEndIndex}", Count).Methods("GET")
 	myRouter.HandleFunc("/database", GetDatabase).Methods("GET")
 	port := flag.String("port", "3000", " default port is 3000")
 	flag.Parse()

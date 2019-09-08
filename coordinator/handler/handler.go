@@ -30,18 +30,28 @@ func initializeNodes(nodeCount string) {
 	p.NodeCount = nc
 }
 
+func returnCode500(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("Internal Server Error!"))
+}
+
+func returnCode400(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Bad Request"))
+}
+
 //Post makes post request
-func Post(item model.Item, w http.ResponseWriter, r *http.Request) (int, int) {
+func Post(item model.Item, w http.ResponseWriter, r *http.Request) (int, int, error) {
 
 	w.Header().Set("Content-Type", "application/json")
 	itemContent, err := json.Marshal(item)
 
 	if err != nil {
 		fmt.Println(err)
-		return -1, -1
+		return -1, -1, err
 	}
 
-	req, err := http.NewRequest("POST", p.NodeAddress(), bytes.NewBuffer(itemContent))
+	req, err := http.NewRequest("POST", p.NodePostAddress(), bytes.NewBuffer(itemContent))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -49,7 +59,7 @@ func Post(item model.Item, w http.ResponseWriter, r *http.Request) (int, int) {
 
 	if err != nil {
 		fmt.Println(err)
-		return -1, -1
+		return -1, -1, err
 	}
 
 	defer resp.Body.Close()
@@ -59,10 +69,29 @@ func Post(item model.Item, w http.ResponseWriter, r *http.Request) (int, int) {
 
 	if err != nil {
 		fmt.Println(err)
-		return -1, -1
+		return -1, -1, err
 	}
 
-	return int(res["lastIndexId"].(float64)), int(res["lastTenantId"].(float64))
+	return int(res["lastIndexId"].(float64)), int(res["lastTenantId"].(float64)), nil
+}
+
+//Get makes get request
+func Get(port int, startIndex int, endIndex int, w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	resp, err := http.Get(p.NodeCountAddress(port, startIndex, endIndex))
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	var countObj interface{}
+	err = json.NewDecoder(resp.Body).Decode(&countObj)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return countObj, nil
 }
 
 //UpNodes runs nodes from front-end
@@ -108,8 +137,8 @@ func Shutdown(w http.ResponseWriter, r *http.Request) {
 	ProcessID, _ := strconv.Atoi(params["ProcessID"])
 	node.KillNodes(ProcessID, nil)
 
-	for i, node := range p.Nodes {
-		if node.ProcessID == ProcessID {
+	for i, n := range p.Nodes {
+		if n != nil && n.ProcessID == ProcessID {
 			copy(p.Nodes[i:], p.Nodes[i+1:])
 			p.Nodes[len(p.Nodes)-1] = nil
 			p.Nodes = p.Nodes[:len(p.Nodes)-1]
@@ -124,23 +153,22 @@ func Shutdown(w http.ResponseWriter, r *http.Request) {
 
 //Count returns merged count datas
 func Count(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	tenantID := params["TenantID"]
-	serverAddress := fmt.Sprintf("http://127.0.0.1:%v/items/%s/count", p.Nodes[p.NodeIndex].Port, tenantID)
-	resp, err := http.Get(serverAddress)
+
+	res, err := p.Count(tenantID, Get, w, r)
 
 	if err != nil {
-		fmt.Println(err)
+		returnCode500(w, r)
+		return
 	}
 
-	var items interface{}
-	err = json.NewDecoder(resp.Body).Decode(&items)
+	fmt.Println(res)
 
-	if err != nil {
-		fmt.Println(err)
-	}
-	json.NewEncoder(w).Encode(items)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
 }
 
 //Insert gets item and sends data to appropriate node
@@ -150,9 +178,14 @@ func Insert(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println(err)
+		returnCode400(w, r)
 	}
 
-	p.Insert(Post, item, w, r)
+	err = p.Insert(Post, item, w, r)
+	if err != nil {
+		fmt.Println(err)
+		returnCode500(w, r)
+	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,

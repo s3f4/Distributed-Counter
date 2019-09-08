@@ -12,82 +12,193 @@ type Processor struct {
 	NodeProcessID int
 	NodeCount     int
 	Nodes         []*model.Node
-	Partitions    map[string]map[int][]*model.Partition // tenantIds partitions
-	lastIndexId   int
-	lastTenantId  string
+	Partitions    map[string]map[int]map[bool][]*model.Partition // tenantIds partitions
 }
 
-type sendToServerFn func(model.Item, http.ResponseWriter, *http.Request) (int, int)
+type sendToServerFn func(model.Item, http.ResponseWriter, *http.Request) (int, int, error)
+type countGetFn func(int, int, int, http.ResponseWriter, *http.Request) (interface{}, error)
 
 func (p *Processor) createPartition(item model.Item) *Processor {
 	if p.Partitions[item.TenantID] == nil {
-		p.Partitions[item.TenantID] = map[int][]*model.Partition{
-			p.NodeProcessID: []*model.Partition{&model.Partition{
-				PartitionIndexes: make([]int, 2),
-				IsCopy:           false,
-			}},
+		p.Partitions[item.TenantID] = map[int]map[bool][]*model.Partition{
+			p.NodeProcessID: map[bool][]*model.Partition{
+				true:  []*model.Partition{},
+				false: []*model.Partition{},
+			},
 		}
 	} else {
+
 		if p.Partitions[item.TenantID][p.NodeProcessID] == nil {
-			p.Partitions[item.TenantID][p.NodeProcessID] = []*model.Partition{&model.Partition{
-				PartitionIndexes: make([]int, 2),
-				IsCopy:           false,
-			},
+			p.Partitions[item.TenantID][p.NodeProcessID] = map[bool][]*model.Partition{
+				true:  []*model.Partition{},
+				false: []*model.Partition{},
 			}
+		}
+
+		if p.Partitions[item.TenantID][p.NodeProcessID][true] == nil {
+			p.Partitions[item.TenantID][p.NodeProcessID][true] = []*model.Partition{}
+		}
+
+		if p.Partitions[item.TenantID][p.NodeProcessID][false] == nil {
+			p.Partitions[item.TenantID][p.NodeProcessID][false] = []*model.Partition{}
 		}
 	}
 	return p
 }
 
-func (p *Processor) handlePartitionIndex(item model.Item, isCopy bool) *Processor {
-	lp := p.Partitions[item.TenantID][p.NodeProcessID]
-
-	if len(lp[len(lp)-1].PartitionIndexes) == 0 {
-		lp[len(lp)-1].PartitionIndexes = []int{
-			p.lastIndexId, p.lastIndexId,
+func (p *Processor) handlePartitionIndex(item model.Item, LastIndexID int, isCopy bool) *Processor {
+	if p.GetCurrentNode().LastTenantID != item.TenantID {
+		newPartition := &model.Partition{
+			PartitionIndexes: []int{
+				LastIndexID, LastIndexID,
+			},
 		}
-		lp[len(lp)-1].IsCopy = isCopy
+
+		p.Partitions[item.TenantID][p.NodeProcessID][isCopy] = append(p.Partitions[item.TenantID][p.NodeProcessID][isCopy], newPartition)
 	} else {
-		lp[len(lp)-1].PartitionIndexes[1] = p.lastIndexId
-		lp[len(lp)-1].IsCopy = isCopy
+		p.Partitions[item.TenantID][p.NodeProcessID][isCopy][len(p.Partitions[item.TenantID][p.NodeProcessID][isCopy])-1].PartitionIndexes[1] = p.GetCurrentNode().LastIndexID + 1
 	}
+
+	return p
+}
+
+//GetPortByProcessID ...
+func (p *Processor) GetPortByProcessID(ProcessID int) int {
+	port := 0
+	for i := range p.Nodes {
+		if p.Nodes[i].ProcessID == ProcessID {
+			port = p.Nodes[i].Port
+		}
+	}
+	return port
+}
+
+//GetCurrentNode ..
+func (p *Processor) GetCurrentNode() *model.Node {
+	return p.Nodes[p.NodeIndex]
+}
+
+//SetProcessID ...
+func (p *Processor) SetProcessID() *Processor {
+	p.NodeProcessID = p.Nodes[p.NodeIndex].ProcessID
 	return p
 }
 
 //Move moves between nodes
 func (p *Processor) Move() *Processor {
 	p.NodeIndex = (p.NodeIndex + 1) % p.NodeCount
-	p.NodeProcessID = p.Nodes[p.NodeIndex].ProcessID
 	return p
 }
 
-//NodeAddress returns current node's address
-func (p *Processor) NodeAddress() string {
+//NodePostAddress returns current node's address
+func (p *Processor) NodePostAddress() string {
 	return fmt.Sprintf("http://127.0.0.1:%v/items", p.Nodes[p.NodeIndex].Port)
 }
 
+//NodeCountAddress returns current node's address
+func (p *Processor) NodeCountAddress(port int, startIndex int, endIndex int) string {
+	fmt.Println(fmt.Sprintf("http://127.0.0.1:%v/items/%v/%v", port, startIndex, endIndex))
+	return fmt.Sprintf("http://127.0.0.1:%v/items/%v/%v", port, startIndex, endIndex)
+}
+
 //Insert ...
-func (p *Processor) Insert(sendToServer sendToServerFn, item model.Item, w http.ResponseWriter, r *http.Request) *Processor {
+func (p *Processor) Insert(sendToServer sendToServerFn, item model.Item, w http.ResponseWriter, r *http.Request) error {
 	//Send Insert request first node
-	lastIndexId, lastTenantId := sendToServer(item, w, r)
+	p.SetProcessID()
+	lastIndexID, lastTenantID, err := sendToServer(item, w, r)
+	if err != nil {
+		return err
+	}
 
-	p.lastIndexId = lastIndexId
-	p.lastTenantId = strconv.Itoa(lastTenantId)
+	p.createPartition(item).
+		handlePartitionIndex(item, lastIndexID, false)
 
-	p.Move().
-		createPartition(item).
-		handlePartitionIndex(item, false)
+	p.GetCurrentNode().LastIndexID = lastIndexID
+	p.GetCurrentNode().LastTenantID = strconv.Itoa(lastTenantID)
+	p.Move()
 
-	lastIndexId, lastTenantId = sendToServer(item, w, r)
-	p.lastIndexId = lastIndexId
-	p.lastTenantId = strconv.Itoa(lastTenantId)
+	p.SetProcessID()
+	lastIndexID, lastTenantID, err = sendToServer(item, w, r)
+	if err != nil {
+		return err
+	}
 
-	p.Move().
-		createPartition(item).
-		handlePartitionIndex(item, true)
+	p.createPartition(item).
+		handlePartitionIndex(item, lastIndexID, true)
 
-	fmt.Println(p.Partitions)
-	return p
+	p.GetCurrentNode().LastIndexID = lastIndexID
+	p.GetCurrentNode().LastTenantID = strconv.Itoa(lastTenantID)
+
+	p.Move()
+	return nil
+}
+
+//GetResults ...
+func (p *Processor) GetResults(partitionArray map[int][]*model.Partition, get countGetFn, w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	var results []interface{}
+	for processID := range partitionArray {
+		if len(partitionArray[processID]) > 0 {
+			partitions := partitionArray[processID]
+			port := p.GetPortByProcessID(processID)
+			for i := range partitions {
+				result, err := get(port,
+					partitions[i].PartitionIndexes[0],
+					partitions[i].PartitionIndexes[1],
+					w, r)
+				results = append(results, result)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+	return results, nil
+}
+
+//Count ...
+func (p *Processor) Count(TenantID string, get countGetFn, w http.ResponseWriter, r *http.Request) (interface{}, error) {
+
+	partitionArray := make(map[int][]*model.Partition, 0)
+	copyArray := make(map[int][]*model.Partition, 0)
+
+	for processID, nodes := range p.Partitions[TenantID] {
+		for isCopy := range nodes {
+			if !isCopy {
+				partitionArray[processID] = nodes[isCopy]
+			} else {
+				copyArray[processID] = nodes[isCopy]
+			}
+		}
+	}
+
+	result, err := p.GetResults(partitionArray, get, w, r)
+	if err != nil {
+		result, err = p.GetResults(copyArray, get, w, r)
+		if err != nil {
+			return err, nil
+		}
+		return result, nil
+	}
+	return result, nil
+
+	// lastIndexId, lastTenantId := countGetFn(TenantID, w, r)
+
+	// p.lastIndexId = lastIndexId
+	// p.lastTenantId = strconv.Itoa(lastTenantId)
+
+	// p.Move().
+	// 	createPartition(item).
+	// 	handlePartitionIndex(item, false)
+
+	// lastIndexId, lastTenantId = sendToServer(item, w, r)
+	// p.lastIndexId = lastIndexId
+	// p.lastTenantId = strconv.Itoa(lastTenantId)
+
+	// p.Move().
+	// 	createPartition(item).
+	// 	handlePartitionIndex(item, true)
+
+	// fmt.Println(p.Partitions)
 }
 
 func (p *Processor) Merge() *Processor {

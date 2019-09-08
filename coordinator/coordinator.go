@@ -17,7 +17,7 @@ func main() {
 		Nodes:         make([]*model.Node, 0),
 		NodeCount:     0,
 		NodeProcessID: 0,
-		Partitions:    make(map[string]map[int][]*model.Partition, 0),
+		Partitions:    make(map[string]map[int]map[bool][]*model.Partition, 0),
 	})
 
 	fmt.Println("servers are ready....")
