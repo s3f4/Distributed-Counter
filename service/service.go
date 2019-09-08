@@ -18,7 +18,7 @@ type Item struct {
 	TenantID string
 }
 
-//Storage holds datas
+//Database holds datas
 type Database struct {
 	items       []Item
 	lastIndexId int
@@ -103,6 +103,6 @@ func Down() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
 	<-sigint
-	fmt.Println("i am dead")
+	fmt.Println("\ni am dead")
 	os.Exit(0)
 }

@@ -2,6 +2,15 @@ import React from 'react'
 import { getNodeDB } from '../api';
 import { Node } from "./NodeList";
 
+interface Item {
+    TenantID: string;
+    ItemID: string;
+}
+
+const colors = [
+    '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
+];
+
 const NodeCard = (props: any) => {
     const { node } = props;
     const [error, setError] = React.useState<any>(false);
@@ -18,13 +27,21 @@ const NodeCard = (props: any) => {
         });
     }, [node])
 
+    const listDB = () => {
+
+    }
+
     return (
         <div className="p-2 card mt-5 mr-2" style={{ width: "18rem" }}>
             <div className="card-body">
                 <h5 className="card-title">pID: {node.ProcessID} - Port: {node.Port}</h5>
                 <p className="card-text">
                     {error}
-                    {JSON.stringify(db)}
+                    {
+                        db && db.items && db.items.map((item: Item) => {
+                            return <div style={{ backgroundColor: colors[parseInt(item.TenantID) - 1], borderBottom: "1px solid black", padding: "2px 5px 2px 10px" }}>{item.TenantID} - {item.ItemID}</div>
+                        })
+                    }
                 </p>
             </div>
         </div>

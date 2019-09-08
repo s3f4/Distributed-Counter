@@ -49,9 +49,17 @@ func UpNodes(w http.ResponseWriter, r *http.Request) {
 //GetNodes returns nodes to show front end
 func GetNodes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	var nodes []*model.Node
+	if p != nil && len(p.Nodes) > 0 {
+		nodes = p.Nodes
+	} else {
+		nodes = nil
+	}
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"nodes":   p.Nodes,
+		"nodes":   nodes,
 	})
 }
 
@@ -88,10 +96,12 @@ func Insert(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	serverAddress := fmt.Sprintf("http://127.0.0.1:%v/items", p.Nodes[p.NodeIndex].Port)
+	p.Move()
 	itemContent, err := json.Marshal(item)
 
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	req, err := http.NewRequest("POST", serverAddress, bytes.NewBuffer(itemContent))
@@ -102,6 +112,7 @@ func Insert(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	defer resp.Body.Close()

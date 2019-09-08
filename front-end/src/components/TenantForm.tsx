@@ -2,41 +2,45 @@ import React from 'react'
 import { insertItem } from '../api';
 
 const TenantForm = (props: any) => {
-    const initalState = {
-        TenantID: "",
-        ItemID: ""
-    }
-
-    const [error, setError] = React.useState<any>(undefined);
-    const [values, setValues] = React.useState<any>(initalState);
-
-    const handleChange = (name: string) => (event: any) => {
-        const value = event.target.value;
-        setValues({ ...values, [name]: value });
-    }
+    const [error, setError] = React.useState<any>("");
+    const [TenantID, setTenantID] = React.useState<string>("1");
 
     const send = (e: any) => {
         e.preventDefault();
-        insertItem(values).then(data => {
-            if (data.error) {
-                setError(data.error)
-            } else {
-
-            }
-            console.log(data);
+        insertItem({
+            TenantID,
+            ItemID: (new Date().getUTCMilliseconds().toString() + new Date().getTime().toString()).toString()
+        }).then(data => {
+            setError(data.error ? data.error.message : "")
         });
         props.reRender();
     }
 
+    const range = (start: number, end: number): number[] => {
+        if (start === end) return [start];
+        return [start, ...range(start + 1, end)];
+    }
+
+    const alert = () => {
+        if (error) {
+            return (
+                <div className="mt-3 alert alert-danger" role="alert">
+                    {error}
+                </div>
+            );
+        }
+    }
+
     return (
         <form onSubmit={send} className="mt-3">
+            {alert()}
             <div className="form-group">
                 <label htmlFor="tenant">Tenant</label>
-                <input onChange={handleChange("TenantID")} type="text" name="TenantID" className="form-control" id="tenant" aria-describedby="emailHelp" placeholder="Enter tenant" />
-            </div>
-            <div className="form-group">
-                <label htmlFor="item">Item</label>
-                <input onChange={handleChange("ItemID")} type="text" name="ItemID" className="form-control" id="item" placeholder="Item Id" />
+                <select onChange={(e: any) => setTenantID(e.target.value)} name="TenantID" className="form-control" id="tenant">
+                    {range(1, 10).map((id: number) => {
+                        return <option value={id}>{id}</option>
+                    })}
+                </select>
             </div>
             <button type="submit" className="btn btn-primary">Send</button>
         </form>
