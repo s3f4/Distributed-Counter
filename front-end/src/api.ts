@@ -1,5 +1,6 @@
+const URL = 'http://157.245.71.24';
 export const insertItem = (item: any) => {
-    return fetch(`http://127.0.0.1:3001/items`, {
+    return fetch(`${URL}:3001/items`, {
         method: "POST",
         headers: {
             Accept: 'application/json',
@@ -17,7 +18,7 @@ export const insertItem = (item: any) => {
 }
 
 export const getNodeDB = (port: number) => {
-    return fetch(`http://127.0.0.1:${port}/database`, {
+    return fetch(`${URL}:${port}/database`, {
         method: "GET",
     })
         .then(response => {
@@ -31,7 +32,7 @@ export const getNodeDB = (port: number) => {
 }
 
 export const getNodes = () => {
-    return fetch(`http://127.0.0.1:3001/nodes`, {
+    return fetch(`${URL}:3001/nodes`, {
         method: "GET",
     })
         .then(response => {
@@ -45,7 +46,7 @@ export const getNodes = () => {
 }
 
 export const upNodes = (nodeCount: number) => {
-    return fetch(`http://127.0.0.1:3001/upNodes/${nodeCount}`, {
+    return fetch(`${URL}:3001/upNodes/${nodeCount}`, {
         method: "GET",
     })
         .then(response => {
@@ -59,7 +60,7 @@ export const upNodes = (nodeCount: number) => {
 }
 
 export const shutdownNode = (pID: number) => {
-    return fetch(`http://127.0.0.1:3001/shutdown/${pID}`, {
+    return fetch(`${URL}:3001/shutdown/${pID}`, {
         method: "GET",
     })
         .then(response => {
@@ -73,7 +74,7 @@ export const shutdownNode = (pID: number) => {
 }
 
 export const getCount = (tenantID: number) => {
-    return fetch(`http://127.0.0.1:3001/items/${tenantID}/count`, {
+    return fetch(`${URL}:3001/items/${tenantID}/count`, {
         method: "GET"
     })
         .then(response => {
