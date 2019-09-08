@@ -21,24 +21,62 @@ func SetProcessor(processor *processor.Processor) {
 	p = processor
 }
 
+//Initialize nodes and assign to processor
+func initializeNodes(nodeCount string) {
+	nc, _ := strconv.Atoi(nodeCount)
+	nodes, _ := node.InitNodes(nc)
+
+	p.Nodes = nodes
+	p.NodeCount = nc
+}
+
+//Post makes post request
+func Post(item model.Item, w http.ResponseWriter, r *http.Request) int {
+
+	w.Header().Set("Content-Type", "application/json")
+	itemContent, err := json.Marshal(item)
+
+	if err != nil {
+		fmt.Println(err)
+		return -1
+	}
+
+	req, err := http.NewRequest("POST", p.NodeAddress(), bytes.NewBuffer(itemContent))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println(err)
+		return -1
+	}
+
+	defer resp.Body.Close()
+	result, err := ioutil.ReadAll(resp.Body)
+	var res map[string]interface{}
+	err = json.Unmarshal(result, &res)
+
+	if err != nil {
+		fmt.Println(err)
+		return -1
+	}
+
+	return int(res["lastIndexId"].(float64))
+}
+
 //UpNodes runs nodes from front-end
 func UpNodes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if p != nil && len(p.Nodes) > 0 {
 		node.KillNodes(0, p.Nodes)
+		p.NodeCount = 0
 	}
 
 	params := mux.Vars(r)
 	NodeCount := params["NodeCount"]
-	nc, _ := strconv.Atoi(NodeCount)
-	nodes, _ := node.InitNodes(nc)
-	processor := processor.Processor{
-		Nodes:     nodes,
-		NodeCount: nc,
-	}
-
-	SetProcessor(&processor)
+	initializeNodes(NodeCount)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
@@ -69,9 +107,9 @@ func Shutdown(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	ProcessID, _ := strconv.Atoi(params["ProcessID"])
 	node.KillNodes(ProcessID, nil)
+
 	for i, node := range p.Nodes {
 		if node.ProcessID == ProcessID {
-			fmt.Println(node)
 			copy(p.Nodes[i:], p.Nodes[i+1:])
 			p.Nodes[len(p.Nodes)-1] = nil
 			p.Nodes = p.Nodes[:len(p.Nodes)-1]
@@ -107,7 +145,6 @@ func Count(w http.ResponseWriter, r *http.Request) {
 
 //Insert gets item and sends data to appropriate node
 func Insert(w http.ResponseWriter, r *http.Request) {
-
 	var item model.Item
 	err := json.NewDecoder(r.Body).Decode(&item)
 
@@ -115,34 +152,9 @@ func Insert(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	serverAddress := fmt.Sprintf("http://127.0.0.1:%v/items", p.Nodes[p.NodeIndex].Port)
-	p.Move()
-	itemContent, err := json.Marshal(item)
+	p.Insert(Post, item, w, r)
 
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	req, err := http.NewRequest("POST", serverAddress, bytes.NewBuffer(itemContent))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	var result interface{}
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	json.NewEncoder(w).Encode(result)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+	})
 }

@@ -26,7 +26,7 @@ type Database struct {
 
 var database = Database{
 	items:       make([]Item, 0),
-	lastIndexId: 0,
+	lastIndexId: -1,
 }
 
 //GetDatabase returns db to show front end
@@ -45,8 +45,8 @@ func Count(w http.ResponseWriter, r *http.Request) {
 	tenantID := params["TenantID"]
 	count := 0
 
-	for _, item := range database.items {
-		if item.TenantID == tenantID {
+	for i := range database.items {
+		if database.items[i].TenantID == tenantID {
 			count++
 		}
 	}

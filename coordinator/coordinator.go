@@ -2,6 +2,8 @@ package main
 
 import (
 	"coordinator/handler"
+	"coordinator/model"
+	"coordinator/processor"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,13 +13,15 @@ import (
 )
 
 func main() {
+	handler.SetProcessor(&processor.Processor{
+		Nodes:     make([]*model.Node, 0),
+		NodeCount: 0,
+	})
 
 	fmt.Println("servers are ready....")
 	//Latency  waiting to up nodes
 	time.Sleep(time.Second * 2)
 
-	// time.Sleep(5 * time.Second)
-	// node.KillNodes(0, nodes)
 	myRouter := mux.NewRouter().StrictSlash(true)
 	/*
 		For Frontend requests
