@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -20,13 +21,15 @@ type Item struct {
 
 //Database holds datas
 type Database struct {
-	items       []Item
-	lastIndexId int
+	items        []Item
+	lastIndexId  int
+	lastTenantId int
 }
 
 var database = Database{
-	items:       make([]Item, 0),
-	lastIndexId: -1,
+	items:        make([]Item, 0),
+	lastIndexId:  -1,
+	lastTenantId: 0, //to create partitions
 }
 
 //GetDatabase returns db to show front end
@@ -64,21 +67,20 @@ func Insert(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&item)
 	database.items = append(database.items, item)
 	database.lastIndexId++
+	database.lastTenantId, _ = strconv.Atoi(item.TenantID)
 	if err != nil {
 		fmt.Println(err)
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"item":        item,
-		"lastIndexId": database.lastIndexId,
+		"item":         item,
+		"lastIndexId":  database.lastIndexId,
+		"lastTenantId": database.lastTenantId,
 	})
 }
 
 func main() {
-
 	go Down()
-
 	myRouter := mux.NewRouter().StrictSlash(true)
-
 	/*
 		For Frontend requests
 	*/

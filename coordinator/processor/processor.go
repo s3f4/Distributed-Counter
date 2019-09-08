@@ -6,20 +6,25 @@ import (
 	"net/http"
 )
 
-//Partition ...
-type Partition struct {
-	ServerID         int
-	PartitionIndexes []int // Partition holds first index and last index
-}
-
 type Processor struct {
-	NodeIndex  int
-	NodeCount  int
-	Nodes      []*model.Node
-	Partitions map[string][]*Partition // tenantIds partitions
+	NodeIndex    int
+	NodeCount    int
+	Nodes        []*model.Node
+	Partitions   map[string]map[int][]*model.Partition // tenantIds partitions
+	lastTenantId int
 }
 
-type sendToServerFn func(model.Item, http.ResponseWriter, *http.Request) int
+type sendToServerFn func(model.Item, http.ResponseWriter, *http.Request) (int, int)
+
+func (p *Processor) createPartition(item model.Item) {
+	if p.Partitions[item.TenantID] == nil {
+		p.Partitions[item.TenantID] = map[int][]*model.Partition{
+			p.NodeIndex: []*model.Partition{&model.Partition{
+				PartitionIndexes: make([]int, 0),
+			}},
+		}
+	}
+}
 
 //Move moves between nodes
 func (p *Processor) Move() *Processor {
@@ -34,10 +39,14 @@ func (p *Processor) NodeAddress() string {
 
 //Insert ...
 func (p *Processor) Insert(sendToServer sendToServerFn, item model.Item, w http.ResponseWriter, r *http.Request) *Processor {
-	lastIndexId := sendToServer(item, w, r)
+	p.Move()
+	p.createPartition(item)
+	lastIndexId, lastTenantId := sendToServer(item, w, r)
 	p.Move().Move()
-	lastIndexId = sendToServer(item, w, r)
-	fmt.Println(lastIndexId)
+	p.createPartition(item)
+	fmt.Println(p.Partitions)
+	lastIndexId, lastTenantId = sendToServer(item, w, r)
+	fmt.Printf("lastItemId:%v , lastTenantId:%v\n", lastIndexId, lastTenantId)
 	return p
 }
 

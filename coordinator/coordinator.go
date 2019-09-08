@@ -14,8 +14,9 @@ import (
 
 func main() {
 	handler.SetProcessor(&processor.Processor{
-		Nodes:     make([]*model.Node, 0),
-		NodeCount: 0,
+		Nodes:      make([]*model.Node, 0),
+		NodeCount:  0,
+		Partitions: make(map[string]map[int][]*model.Partition, 0),
 	})
 
 	fmt.Println("servers are ready....")

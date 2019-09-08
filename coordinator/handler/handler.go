@@ -31,14 +31,14 @@ func initializeNodes(nodeCount string) {
 }
 
 //Post makes post request
-func Post(item model.Item, w http.ResponseWriter, r *http.Request) int {
+func Post(item model.Item, w http.ResponseWriter, r *http.Request) (int, int) {
 
 	w.Header().Set("Content-Type", "application/json")
 	itemContent, err := json.Marshal(item)
 
 	if err != nil {
 		fmt.Println(err)
-		return -1
+		return -1, -1
 	}
 
 	req, err := http.NewRequest("POST", p.NodeAddress(), bytes.NewBuffer(itemContent))
@@ -49,7 +49,7 @@ func Post(item model.Item, w http.ResponseWriter, r *http.Request) int {
 
 	if err != nil {
 		fmt.Println(err)
-		return -1
+		return -1, -1
 	}
 
 	defer resp.Body.Close()
@@ -59,10 +59,10 @@ func Post(item model.Item, w http.ResponseWriter, r *http.Request) int {
 
 	if err != nil {
 		fmt.Println(err)
-		return -1
+		return -1, -1
 	}
 
-	return int(res["lastIndexId"].(float64))
+	return int(res["lastIndexId"].(float64)), int(res["lastTenantId"].(float64))
 }
 
 //UpNodes runs nodes from front-end
