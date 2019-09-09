@@ -10,6 +10,7 @@ const NodeForm = (props: Props) => {
     const [error, setError] = React.useState<string>("");
     const [nodeCountOrProcessID, setNodeCountOrProcessID] = React.useState<string>("0");
     const [operation, setOperation] = React.useState<string>("0");
+
     const handleInput = (e: any) => {
         setNodeCountOrProcessID(e.target.value);
     }
@@ -36,6 +37,7 @@ const NodeForm = (props: Props) => {
     }
 
     const handleSelect = (e: any) => {
+        setNodeCountOrProcessID("");
         setOperation(e.target.value);
     }
 
@@ -44,14 +46,14 @@ const NodeForm = (props: Props) => {
             case "1":
                 return (
                     <React.Fragment>
-                        <label htmlFor="tenant">Node count</label>
+                        <label htmlFor="tenant">Node count (Only even numbers)</label>
                         <input type="text" className="form-control" id="tenant" placeholder="Node count" onChange={handleInput} />
                     </React.Fragment>
                 );
             case "2": return (
                 <React.Fragment>
                     <label htmlFor="tenant">ProcessID</label>
-                    <input type="text" className="form-control" id="tenant" placeholder="ProcessID" onChange={handleInput} />
+                    <input value={nodeCountOrProcessID} type="text" className="form-control" id="tenant" placeholder="ProcessID" onChange={handleInput} />
                 </React.Fragment>
             );
             case "3": return;
@@ -67,9 +69,9 @@ const NodeForm = (props: Props) => {
                             e.preventDefault();
                             setError("");
                             if (parseInt(nodeCountOrProcessID) > 10) {
-                                setError("You can not run node greather than 10");
+                                setError("Node count can not be greather than 10");
                             } else {
-                                props.upNodes(parseInt(nodeCountOrProcessID));
+                                props.upNodes(parseInt(nodeCountOrProcessID) % 2 ? (parseInt(nodeCountOrProcessID) + 1) : parseInt(nodeCountOrProcessID));
                             }
 
                         }} type="submit" className="btn btn-primary">Up</button>
@@ -101,7 +103,7 @@ const NodeForm = (props: Props) => {
                         <option>Select an operation</option>
                         <option value="1">Up nodes(only at the begining, this operation shutdowns other nodes)</option>
                         <option value="2">Shutdown a node by processId </option>
-                        <option value="3">Add a new node and replicate</option>
+                        <option value="3">Add a new node and replicate - TODO</option>
                     </select>
 
                     {showInput()}

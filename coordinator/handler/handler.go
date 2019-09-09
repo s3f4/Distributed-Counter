@@ -143,6 +143,7 @@ func Shutdown(w http.ResponseWriter, r *http.Request) {
 			p.Nodes[len(p.Nodes)-1] = nil
 			p.Nodes = p.Nodes[:len(p.Nodes)-1]
 			p.NodeCount--
+			p.Move()
 		}
 	}
 
@@ -163,11 +164,10 @@ func Count(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(res)
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
+		"count":   res,
 	})
 }
 

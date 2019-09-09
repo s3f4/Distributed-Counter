@@ -7,6 +7,7 @@ const TenantForm = (props: any) => {
     const [itemCount, setItemCount] = React.useState<number>(0);
     const send = (e: any) => {
         e.preventDefault();
+        setError("")
         insertItem({
             TenantID,
             ItemID: (new Date().getUTCMilliseconds().toString() + new Date().getTime().toString()).toString()
@@ -18,6 +19,7 @@ const TenantForm = (props: any) => {
 
     const count = (e: any) => {
         e.preventDefault();
+        setError("")
         getCount(parseInt(TenantID)).then(data => {
             if (data.error) {
                 setError(data.error.message)

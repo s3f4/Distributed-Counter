@@ -21,26 +21,26 @@ type countGetFn func(int, int, int, http.ResponseWriter, *http.Request) (interfa
 func (p *Processor) createPartition(item model.Item) *Processor {
 	if p.Partitions[item.TenantID] == nil {
 		p.Partitions[item.TenantID] = map[int]map[bool][]*model.Partition{
-			p.NodeProcessID: map[bool][]*model.Partition{
+			p.GetCurrentNode().ProcessID: map[bool][]*model.Partition{
 				true:  []*model.Partition{},
 				false: []*model.Partition{},
 			},
 		}
 	} else {
 
-		if p.Partitions[item.TenantID][p.NodeProcessID] == nil {
-			p.Partitions[item.TenantID][p.NodeProcessID] = map[bool][]*model.Partition{
+		if p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID] == nil {
+			p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID] = map[bool][]*model.Partition{
 				true:  []*model.Partition{},
 				false: []*model.Partition{},
 			}
 		}
 
-		if p.Partitions[item.TenantID][p.NodeProcessID][true] == nil {
-			p.Partitions[item.TenantID][p.NodeProcessID][true] = []*model.Partition{}
+		if p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][true] == nil {
+			p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][true] = []*model.Partition{}
 		}
 
-		if p.Partitions[item.TenantID][p.NodeProcessID][false] == nil {
-			p.Partitions[item.TenantID][p.NodeProcessID][false] = []*model.Partition{}
+		if p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][false] == nil {
+			p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][false] = []*model.Partition{}
 		}
 	}
 	return p
@@ -49,14 +49,14 @@ func (p *Processor) createPartition(item model.Item) *Processor {
 func (p *Processor) handlePartitionIndex(item model.Item, LastIndexID int, isCopy bool) *Processor {
 	if p.GetCurrentNode().LastTenantID != item.TenantID {
 		newPartition := &model.Partition{
-			PartitionIndexes: []int{
+			PartitionIndexes: [2]int{
 				LastIndexID, LastIndexID,
 			},
 		}
 
-		p.Partitions[item.TenantID][p.NodeProcessID][isCopy] = append(p.Partitions[item.TenantID][p.NodeProcessID][isCopy], newPartition)
+		p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][isCopy] = append(p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][isCopy], newPartition)
 	} else {
-		p.Partitions[item.TenantID][p.NodeProcessID][isCopy][len(p.Partitions[item.TenantID][p.NodeProcessID][isCopy])-1].PartitionIndexes[1] = p.GetCurrentNode().LastIndexID + 1
+		p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][isCopy][len(p.Partitions[item.TenantID][p.GetCurrentNode().ProcessID][isCopy])-1].PartitionIndexes[1] = p.GetCurrentNode().LastIndexID + 1
 	}
 
 	return p
@@ -76,12 +76,6 @@ func (p *Processor) GetPortByProcessID(ProcessID int) int {
 //GetCurrentNode ..
 func (p *Processor) GetCurrentNode() *model.Node {
 	return p.Nodes[p.NodeIndex]
-}
-
-//SetProcessID ...
-func (p *Processor) SetProcessID() *Processor {
-	p.NodeProcessID = p.Nodes[p.NodeIndex].ProcessID
-	return p
 }
 
 //Move moves between nodes
@@ -104,7 +98,6 @@ func (p *Processor) NodeCountAddress(port int, startIndex int, endIndex int) str
 //Insert ...
 func (p *Processor) Insert(sendToServer sendToServerFn, item model.Item, w http.ResponseWriter, r *http.Request) error {
 	//Send Insert request first node
-	p.SetProcessID()
 	lastIndexID, lastTenantID, err := sendToServer(item, w, r)
 	if err != nil {
 		return err
@@ -117,7 +110,6 @@ func (p *Processor) Insert(sendToServer sendToServerFn, item model.Item, w http.
 	p.GetCurrentNode().LastTenantID = strconv.Itoa(lastTenantID)
 	p.Move()
 
-	p.SetProcessID()
 	lastIndexID, lastTenantID, err = sendToServer(item, w, r)
 	if err != nil {
 		return err
@@ -145,10 +137,11 @@ func (p *Processor) GetResults(partitionArray map[int][]*model.Partition, get co
 					partitions[i].PartitionIndexes[0],
 					partitions[i].PartitionIndexes[1],
 					w, r)
-				results = append(results, result)
 				if err != nil {
 					return nil, err
 				}
+				results = append(results, result)
+
 			}
 		}
 	}
@@ -156,7 +149,7 @@ func (p *Processor) GetResults(partitionArray map[int][]*model.Partition, get co
 }
 
 //Count ...
-func (p *Processor) Count(TenantID string, get countGetFn, w http.ResponseWriter, r *http.Request) (interface{}, error) {
+func (p *Processor) Count(TenantID string, get countGetFn, w http.ResponseWriter, r *http.Request) (int, error) {
 
 	partitionArray := make(map[int][]*model.Partition, 0)
 	copyArray := make(map[int][]*model.Partition, 0)
@@ -175,32 +168,19 @@ func (p *Processor) Count(TenantID string, get countGetFn, w http.ResponseWriter
 	if err != nil {
 		result, err = p.GetResults(copyArray, get, w, r)
 		if err != nil {
-			return err, nil
+			return 0, err
 		}
-		return result, nil
+		return p.Merge(result), nil
 	}
-	return result, nil
-
-	// lastIndexId, lastTenantId := countGetFn(TenantID, w, r)
-
-	// p.lastIndexId = lastIndexId
-	// p.lastTenantId = strconv.Itoa(lastTenantId)
-
-	// p.Move().
-	// 	createPartition(item).
-	// 	handlePartitionIndex(item, false)
-
-	// lastIndexId, lastTenantId = sendToServer(item, w, r)
-	// p.lastIndexId = lastIndexId
-	// p.lastTenantId = strconv.Itoa(lastTenantId)
-
-	// p.Move().
-	// 	createPartition(item).
-	// 	handlePartitionIndex(item, true)
-
-	// fmt.Println(p.Partitions)
+	return p.Merge(result), nil
 }
 
-func (p *Processor) Merge() *Processor {
-	return p
+//Merge merges coming counts
+func (p *Processor) Merge(result interface{}) int {
+	count := 0.0
+	for _, res := range result.([]interface{}) {
+		r := res.(map[string]interface{})
+		count = count + r["count"].(float64)
+	}
+	return int(count)
 }
